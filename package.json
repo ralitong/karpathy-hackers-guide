@@ -1,0 +1,22 @@
+{
+  "name": "karpathy-hackers-guide",
+  "version": "1.0.0",
+  "description": "A project to learn Andrej Karpathy's neuralnets",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ralitong/karpathy-hackers-guide.git"
+  },
+  "keywords": [
+    "machine-learning"
+  ],
+  "author": "Ral Itong",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ralitong/karpathy-hackers-guide/issues"
+  },
+  "homepage": "https://github.com/ralitong/karpathy-hackers-guide#readme"
+}
