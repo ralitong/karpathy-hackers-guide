@@ -1,26 +1,27 @@
+// circuit with single gate for now
 var forwardMultiplyGate = function (x, y) { return x * y; };
 
-forwardMultiplyGate(2, 3);
+/* The derivative d/dx f(x,y) is:
+* f(x+h,y) - f(x,y) / h
+*/
 
-// Random local search
+var x = -2, y = 3; 
+var out = forwardMultiplyGate(x, y); // -6
+var h = 0.0001;
 
-// circuit with single gate for now
-var x = -2, y = 3; // some input values
 
-// try changing x,y randomly small amounts and keep track of what works best
+// compute derivative with respect to x
+var xph = x + h; // -1.9999
+var out2 = forwardMultiplyGate(xph, y); // -5.9997
+var x_derivative = (out2 - out) / h; // 3.0
 
-var tweak_amount = 0.01
-var best_out = -Infinity
-var best_x = x, best_y = y;
+// compute derivative with respect to y
+var yph = y + h
+var out3 = forwardMultiplyGate(x, yph); // -6.0002
+var y_derivative = (out3 - out) / h; // -2.0
 
-for (var k = 0; k < 100; k++) {
-    var x_try = x + tweak_amount * (Math.random() * 2 - 1); // tweak x a bit
-    var y_try = y + tweak_amount * (Math.random() * 2 - 1); // tweak y a bit
-    var out = forwardMultiplyGate(x_try, y_try);
-    if(out > best_out) {
-        // best improvement yet! Keep track of the x and y
-        best_out = out
-        best_x = x_try, best_y = y_try;
-        console.log('Best value found: ', best_out, 'x: ', best_x, 'y: ', best_y);
-    }
-}
+var step_size = 0.01
+var out = forwardMultiplyGate(x, y); // before: -6
+x = x + step_size * x_derivative; // x becomes -1.97
+y = y + step_size * y_derivative; // y becomes 2.98
+var out_new = forwardMultiplyGate(x, y); // -5.87! exciting
