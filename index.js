@@ -1,27 +1,26 @@
 // circuit with single gate for now
 var forwardMultiplyGate = function (x, y) { return x * y; };
 
-/* The derivative d/dx f(x,y) is:
-* f(x+h,y) - f(x,y) / h
+/* Analytic Gradient
+*  d/dx f(x,y) = (f(x+h,y) - f(x,y)) / h
+*  Recall that f(x,y) = xy
+*  d/dx f(x,y) = ((x+h)y - xy) / h = y
+*  d/dx f(x,y) = (xy + hy - xy) / h = y
+*  d/dx f(x,y) = hy / h
+*  d/dx f(x,y) = y
+*  d/dy f(x,y) = (f(x,y+h) - f(x,y)) / h
+*  d/dy f(x,y) = (x(y+h) - xy) / h = x
+*  d/dy f(x,y) = (xy + xh - xy) / h = x
+*  d/dy f(x,y) = xh / h
+*  d/dy f(x,y) = x
 */
 
-var x = -2, y = 3; 
+var x = -2, y = 3; // some input values
 var out = forwardMultiplyGate(x, y); // -6
-var h = 0.0001;
+var x_gradient = y; // Recall d/dx f(x,y) = y, so gradient is y
+var y_gradient = x; // Recall d/dy f(x,y) = x, so gradient is x
 
-
-// compute derivative with respect to x
-var xph = x + h; // -1.9999
-var out2 = forwardMultiplyGate(xph, y); // -5.9997
-var x_derivative = (out2 - out) / h; // 3.0
-
-// compute derivative with respect to y
-var yph = y + h
-var out3 = forwardMultiplyGate(x, yph); // -6.0002
-var y_derivative = (out3 - out) / h; // -2.0
-
-var step_size = 0.01
-var out = forwardMultiplyGate(x, y); // before: -6
-x = x + step_size * x_derivative; // x becomes -1.97
-y = y + step_size * y_derivative; // y becomes 2.98
-var out_new = forwardMultiplyGate(x, y); // -5.87! exciting
+var step_size = 0.01;
+x += step_size * x_gradient; // -2 + 0.03 = -1.97
+y += step_size * y_gradient; // 3 + (0.01 * -2) = 2.98
+var out_new = forwardMultiplyGate(x, y); // -5.87
