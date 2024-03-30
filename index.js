@@ -191,3 +191,24 @@ for (var iter = 0; iter < 400; iter++) {
         console.log(`training accuracy at iter ${iterStr}: ${evalTrainingAccuracy().toFixed(2)}`);
     }
 }
+
+var a = 1; b = -2; c = -1;
+for (var iter = 0; iter < 400; iter++) {
+    // pick a random data point
+    var i = Math.floor(Math.random() * data.length);
+    var x = data[i][0];
+    var y = data[i][1];
+    var label = labels[i];
+
+    // compute pull
+    var score = a * x + b * y + c;
+    var pull = 0.0;
+    if (label === 1 && score < 1) pull = 1;
+    if (label === -1 && score > -1) pull = -1;
+
+    // compute gradient and update parameters
+    var step_size = 0.01
+    a += step_size * (x * pull - a);
+    b += step_size * (y * pull - b);
+    c += step_size * (1 * pull);
+}
