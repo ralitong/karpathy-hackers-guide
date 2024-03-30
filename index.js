@@ -1,85 +1,145 @@
-var forwardMultiplyGate = function (x, y) { return x * y; };
-var forwardAddGate = function (a, b) { return a + b };
-var forwardCircuit = function (x, y, z) {
-    var q = forwardAddGate(x, y);
-    var f = forwardMultiplyGate(q, z);
-    return f;
+// every Unit corresponds to a wire in the diagrams
+var Unit = function (value, gradient) {
+    // value computed in the forward pass
+    this.value = value
+    // the derivative of the circuit output with respect to this unit, computed in backward pass
+    this.gradient = gradient;
 }
 
-// f(q,z) = qz
-// d/dq f(q,z) = z
-// d/dz f(q,z) = q
+var multiplyGate = function () { }
 
-// q is a function(x,y) where f(x,y) = x + y
-// ... or q(x,y) = x + y
+multiplyGate.prototype = {
+    forward: function (u0, u1) {
+        // store pointers to input Units u0 and u1 and output unit utop
+        this.u0 = u0;
+        this.u1 = u1;
+        this.utop = new Unit(u0.value * u1.value, 0.0);
+        return this.utop;
+    },
+    backward: function () {
+        // take the gradient in output unit and chain it with the
+        // local gradients, which we derived for multiply gate before
+        // then write those gradients to those Units.
 
-// Getting the derivative of q(x,y) = x + y with respect to x
-// d/dx q(x,y) = d/dx x + d/dx y
+        // To take the partial derivative with respect to other gates
+        // i.e. The output of this gate can be an input of another function
 
-// d/dx q(x,y) = d/dx x + d/dx y
-// d/dx q(x,y) = 1 + 0       
-// Why is d/dx y = 0? Because y is a constant and y is not a function of x. Or y is not dependent on x.
-// Getting the derivative of a constant is 0.
-// d/dx q(x,y) = 1
+        // We first take the local derivatives of this multiply gate first
+        // local partial derivative of this multiply gate w.r.t. to u0
+        // = u1
+        // local partial derivative of this multiply gate w.r.t. to u1
+        // = u0
 
-// Getting the derivative of q(x,y) = x + y with respect to y
-// d/dy q(x,y) = 0 + 1
-// d/dy q(x,y) = 1
+        // And using the chain rule
+        // chain rule = local partial derivative * output circuit derivative
+        // partial derivative for the whole circuit w.r.t u0
+        // = u1 * output circuit derivative
+        // partial derivative for the whole circuit w.r.t u1
+        // = u0 * output circuit derivative
+        // this.utop represents the ouput wire so
+        // output circuit derivative = this.utop.gradient
+        this.u0.gradient += this.u1.value * this.utop.gradient;
+        this.u1.gradient += this.u0.value * this.utop.gradient;
+    }
+}
 
-// f(q,z) = f(q(x,y),z) = qz
-// d/dx f(q,z) = d/dx f(q(x,y),z)
-// Using the chain rule d/dx f(g(x)) = f'(g(x)) * g'(x)
-// The chain rule simply means multiply the derivative of the outer function by the derivative of the inner function.
-// d/dx f(q,z) = d/dq f(q,z) * d/dx q(x,y)
+var addGate = function () { }
+addGate.prototype = {
+    forward: function (u0, u1) {
+        this.u0 = u0;
+        this.u1 = u1;
+        this.utop = new Unit(u0.value + u1.value, 0.0);
+        return this.utop;
+    },
+    backward: function () {
+        // add gate. derivative wrt both inputs is 1
+        this.u0.gradient += 1 * this.utop.gradient;
+        this.u1.gradient += 1 * this.utop.gradient;
+    }
+}
 
-// Okay, remember that forwardAddGate is q = x + y or q(x,y) = x + y
-// and forwardMultiplyGate is f(q,z) = qz
-// you could say that f(q,z) = f(q(x,y),z)
+var sigmoidGate = function () {
+    // helper function
+    this.sig = function (x) { return 1 / (1 + Math.exp(-x)) };
+}
 
-// Let's implement d/dx f(q,z) = d/dq f(q,z) * d/dx q(x,y) in code
+sigmoidGate.prototype = {
+    forward: function (u0) {
+        this.u0 = u0;
+        this.utop = new Unit(this.sig(this.u0.value), 0.0);
+        return this.utop;
+    },
+    backward: function () {
+        var s = this.sig(this.u0.value)
+        this.u0.gradient += (s * (1 - s)) * this.utop.gradient;
+    }
+}
 
-var x = -2, y = 5, z = -4;
-var q = forwardAddGate(x, y); // q = 3
-var f = forwardMultiplyGate(q, z); // f = -12
+// create input units
+var a = new Unit(1.0, 0.0);
+var b = new Unit(2.0, 0.0);
+var c = new Unit(-3.0, 0.0);
+var x = new Unit(-1.0, 0.0);
+var y = new Unit(3.0, 0.0);
+var s;
 
-// gradient of the MULTIPLY gate with respect to its inputs
-// wrt is short for "with respect to"
-// Remember that getting d/dq f(q,z) where f(q,z) = qz
-// is d/dq f(q,z) = z
-// and d/dz f(q,z) = q
-var derivative_f_wrt_z = q // 3
-var derivative_f_wrt_q = z // -4
+// Create the gates
+var mulg0 = new multiplyGate();
+var mulg1 = new multiplyGate();
+var addg0 = new addGate();
+var addg1 = new addGate();
+var sg0 = new sigmoidGate();
 
-// derivative of the ADD gate with respect to its inputs
-// Remember that d/dx q(x,y) where q(x,y) = x + y
-// d/dx q(x,y) = d/dx x + d/dx y
-// d/dx q(x,y) = x^1-0 + 0 Again remember that y is an independent variable and is treated as a constant, so y is zero
-// d/dx q(x,y) = x^0
-// d/dx q(x,y) = 1
+// do the forward pass
+var forwardNeuron = function () {
+    ax = mulg0.forward(a, x);
+    by = mulg1.forward(b, y);
+    ax_plus_by = addg0.forward(ax, by);
+    ax_plus_by_plus_c = addg1.forward(ax_plus_by, c);
+    s = sg0.forward(ax_plus_by_plus_c);
+}
 
-// Also if getting the derivative of q(x,y) with respective to y is also 1
-// d/dy q(x,y) = 1
+forwardNeuron();
+console.log('circuit output: ', s.value)
 
-var derivative_q_wrt_x = 1.0;
-var derivative_q_wrt_y = 1.0;
+// Let's do compute the gradients for each input
+// the backward flow
+s.gradient = 1.0
+sg0.backward(); // writes gradient to ax_plus_by_plus_c
+addg1.backward(); // writes gradient to ax_plus_by and c
+addg0.backward(); // writes gradient for ax and by
+mulg1.backward(); // writes gradient for b and y
+mulg0.backward(); // writes gradients for a and x
 
-// chain rule d/dx f(q,z) = d/dq f(q,z) * d/dx q(x,y) in code
-var derivative_f_wrt_x = derivative_f_wrt_q * derivative_q_wrt_x; // -4
-var derivative_f_wrt_y = derivative_f_wrt_q * derivative_q_wrt_y; // -4
+// Now that we have the gradients, for each input
+// let's increase the output
+var step_size = 0.01
+a.value += step_size * a.gradient;
+b.value += step_size * b.gradient;
+c.value += step_size * c.gradient;
+x.value += step_size * x.gradient;
+y.value += step_size * y.gradient;
 
-// final gradient, from above: [-4, -4, 3]
-var gradient_f_wrt_xyz = [derivative_f_wrt_x, derivative_f_wrt_y, derivative_f_wrt_z]
+forwardNeuron();
+console.log('circuit output after one backpropagation: ', s.value);
 
-// let the inputs respond to the force/tug:
-step_size = 0.01
-x = x + step_size * derivative_f_wrt_x; // -2.04
-y = y + step_size * derivative_f_wrt_y; // 4.94
-z = z + step_size * derivative_f_wrt_z; // -3.97
+// Let's verify that the gradients generated by the backpropagation is correct
+//  σ(a,b,c,x,y) = 1 / 1 + e ^ -(ax + by + c)
+//  ∂σ(a,b,c,x,y) / a = σ(a+h,b,c,x,y) - σ(a,b,x,y,c) / h
+//  ∂σ(a,b,c,x,y) / b = σ(a,b+h,c,x,y) - σ(a,b,x,y,c) / h
+//  ∂σ(a,b,c,x,y) / c = σ(a,b,c+h,x,y) - σ(a,b,x,y,c) / h
+//  ∂σ(a,b,c,x,y) / x = σ(a,b,c,x+h,y) - σ(a,b,x,y,c) / h
+//  ∂σ(a,b,c,x,y) / y = σ(a,b,c,x,y+h) - σ(a,b,x,y,c) / h
 
-console.log('x with force is', x);
-console.log('y with force is', y);
-console.log('z with force is', z);
+var forwardCircuitFast = function (a, b, c, x, y) {
+    return 1 / (1 + Math.exp(- (a * x + b * y + c)));
+};
+var a = 1, b = 2, c = -3, x = -1, y = 3;
+var h = 0.0001;
+var a_grad = (forwardCircuitFast(a + h, b, c, x, y) - forwardCircuitFast(a, b, c, x, y)) / h;
+var b_grad = (forwardCircuitFast(a, b + h, c, x, y) - forwardCircuitFast(a, b, c, x, y)) / h;
+var c_grad = (forwardCircuitFast(a, b, c + h, x, y) - forwardCircuitFast(a, b, c, x, y)) / h;
+var x_grad = (forwardCircuitFast(a, b, c, x + h, y) - forwardCircuitFast(a, b, c, x, y)) / h;
+var y_grad = (forwardCircuitFast(a, b, c, x, y + h) - forwardCircuitFast(a, b, c, x, y)) / h;
 
-// Our circuit now better give higher output:
-var q = forwardAddGate(x, y); // q becomes 2.92
-var f = forwardMultiplyGate(q, z); // output is -11.59, up from -12! Nice!
+console.log('The gradients are: ', [a_grad, b_grad, c_grad, x_grad, y_grad]);
